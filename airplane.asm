@@ -56,10 +56,10 @@ initscreen:
 
   call StopLCD                  ; Need to stop LCD before loading vram
 
-  ld hl, Sprite                 ; Load the tile data into Vram
+  ld hl, Sprites                ; Load the tile data into Vram
   ld de, _VRAM
-  ld bc, 8*2
-  call mem_CopyMono
+  ld bc, 16*3
+  call mem_Copy
 
   ld a, 0                       ; Clear sprite table
   ld hl, _OAMDATA
@@ -68,7 +68,7 @@ initscreen:
 
   call StartLCD                 ; Free to start the LCD again
 
-  ld a, 0                       ; Clear screen (ascii for blank space)
+  ld a, 2                       ; Clear screen with background tile
   ld hl, _SCRN0
   ld bc, SCRN_VX_B*SCRN_VY_B    ; width * height
   call mem_SetVRAM
@@ -89,9 +89,9 @@ loop:
 
   call getinput
 
-  ld a, [AirplaneXPos]          ; Get current x pos
+  ld a, [rSCX]                  ; Scroll background
   inc a
-  ld [AirplaneXPos], a          ; Move right by one
+  ld [rSCX], a
 
   ld a, [_INPUT]                ; Check keys
 
@@ -211,21 +211,30 @@ StartLCD:
   ld [rLCDC], a
   ret
 
-Sprite:
-  DB %00000000                  ; Blank
-  DB %00000000
-  DB %00000000
-  DB %00000000
-  DB %00000000
-  DB %00000000
-  DB %00000000
-  DB %00000000
+Sprites:
+  DB %00000000,%00000000        ; Blank
+  DB %00000000,%00000000
+  DB %00000000,%00000000
+  DB %00000000,%00000000
+  DB %00000000,%00000000
+  DB %00000000,%00000000
+  DB %00000000,%00000000
+  DB %00000000,%00000000
 
-  DB %00000000                  ; Airplane!
-  DB %00010000
-  DB %01010000
-  DB %01111100
-  DB %01111100
-  DB %00010000
-  DB %00010000
-  DB %00000000
+  DB %00000000,%00000000        ; Airplane!
+  DB %00001000,%00001000
+  DB %01001000,%01001000
+  DB %01111110,%01111110
+  DB %01111110,%01111110
+  DB %00001000,%00001000
+  DB %00001000,%00001000
+  DB %00000000,%00000000
+
+  DB %01000000,%00000000        ; Background tile
+  DB %00000100,%00000000
+  DB %00010000,%00000000
+  DB %00000010,%00000000
+  DB %00000000,%00000000
+  DB %01000000,%00000000
+  DB %00000000,%00000000
+  DB %00100000,%00000000
