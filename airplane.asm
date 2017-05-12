@@ -11,6 +11,10 @@ AirplaneYPos    RB 1            ; Set each to an incrementing location
 AirplaneXPos    RB 1
 AirplaneTileNum RB 1
 AirplaneAttrs   RB 1
+BulletYPos    RB 1
+BulletXPos    RB 1
+BulletTileNum RB 1
+BulletAttrs   RB 1
 
 SECTION "Vblank",ROM0[$0040]
   jp _DMACODE
@@ -58,7 +62,7 @@ initscreen:
 
   ld hl, Sprites                ; Load the tile data into Vram
   ld de, _VRAM
-  ld bc, 16*3
+  ld bc, 16*5
   call mem_Copy
 
   ld a, 0                       ; Clear sprite table
@@ -74,7 +78,7 @@ initscreen:
   call mem_SetVRAM
 
 initsprite:
-  ld a, 64                      ; Initialize sprite values
+  ld a, 64                      ; Initialize airplane sprite
   ld [AirplaneYPos], a
   ld a, 16
   ld [AirplaneXPos], a
@@ -82,6 +86,15 @@ initsprite:
   ld [AirplaneTileNum], a
   ld a, %00000000
   ld [AirplaneAttrs], a
+
+  ld a, 64                      ; Initialize bullet
+  ld [BulletYPos], a
+  ld a, 16
+  ld [BulletXPos], a
+  ld a, 4
+  ld [BulletTileNum], a
+  ld a, %00000000
+  ld [BulletAttrs], a
 
 loop:
   halt
@@ -101,9 +114,19 @@ loop:
   call nz, moveup
 
   pop af
+  push af                       ; Don't clobber the a again
 
   and PADF_DOWN                 ; See if down is pressed
   call nz, movedown
+
+  pop af
+
+  and PADF_A
+  call nz, shoot
+
+  ld a, [BulletXPos]            ; Move bullet to the right
+  inc a
+  ld [BulletXPos], a
 
   jr loop
 
@@ -134,6 +157,17 @@ movedown:
 .retpop:
   pop af
   ret
+
+shoot:
+  push af
+
+  ld a, [AirplaneYPos]
+  ld [BulletYPos], a
+
+  ld a, [AirplaneXPos]
+  ld [BulletXPos], a
+
+  pop af
 
 getinput:
   push af
@@ -246,3 +280,21 @@ Sprites:
   DB %01000000,%00000000
   DB %00000000,%00000000
   DB %00100000,%00000000
+
+  DB %00000000,%00000000        ; Enemy
+  DB %00000000,%00011000
+  DB %00000000,%00100100
+  DB %00000000,%01011010
+  DB %00000000,%01011010
+  DB %00000000,%00100100
+  DB %00000000,%00011000
+  DB %00000000,%00000000
+
+  DB %00000000,%00000000        ; Bullet
+  DB %00000000,%00000000
+  DB %00000000,%00000000
+  DB %00011000,%00011000
+  DB %00011000,%00011000
+  DB %00000000,%00000000
+  DB %00000000,%00000000
+  DB %00000000,%00000000
