@@ -76,7 +76,7 @@ initscreen:
 initsprite:
   ld a, 64                      ; Initialize sprite values
   ld [AirplaneYPos], a
-  ld a, 8
+  ld a, 16
   ld [AirplaneXPos], a
   ld a, 1
   ld [AirplaneTileNum], a
@@ -111,9 +111,13 @@ moveup:
   push af
 
   ld a, [AirplaneYPos]
-  dec a
-  ld [AirplaneYPos], a
 
+  cp 16                         ; If the y position is 16 already, return
+  jr z, .retpop
+
+  dec a                         ; Move up
+  ld [AirplaneYPos], a
+.retpop:
   pop af
   ret
 
@@ -121,9 +125,13 @@ movedown:
   push af
 
   ld a, [AirplaneYPos]
-  inc a
-  ld [AirplaneYPos], a
 
+  cp 152                        ; If the y position is 144, return
+  jr z, .retpop
+
+  inc a                         ; Move down
+  ld [AirplaneYPos], a
+.retpop:
   pop af
   ret
 
