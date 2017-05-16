@@ -6,15 +6,18 @@ _OAMDATA EQU _RAM               ; Must be a multiple of $100
 _OAMDATALENGTH EQU $A0
 _INPUT EQU _OAMDATA+_OAMDATALENGTH ; Put input data at the end of the oam data
 
+; Bullet data - 1 byte: 0 if not active, otherwise it is
+_MAXBULLETS EQU 15
+_BULLETDATA EQU _INPUT+1        ; Store the bullet data at once past input
+_BULLETEDATALENGTH EQU _MAXBULLETS*1 ; Only one byte of data for now
+
+
                 RSSET _RAM      ; Base location is _RAM
 AirplaneYPos    RB 1            ; Set each to an incrementing location
 AirplaneXPos    RB 1
 AirplaneTileNum RB 1
 AirplaneAttrs   RB 1
-BulletYPos    RB 1
-BulletXPos    RB 1
-BulletTileNum RB 1
-BulletAttrs   RB 1
+BulletSpriteStart RB 1          ; Should be the last one
 
 SECTION "Vblank",ROM0[$0040]
   jp _DMACODE
@@ -87,14 +90,7 @@ initsprite:
   ld a, %00000000
   ld [AirplaneAttrs], a
 
-  ld a, 64                      ; Initialize bullet
-  ld [BulletYPos], a
-  ld a, 16
-  ld [BulletXPos], a
-  ld a, 4
-  ld [BulletTileNum], a
-  ld a, %00000000
-  ld [BulletAttrs], a
+  call initbullets
 
 loop:
   halt
@@ -124,9 +120,7 @@ loop:
   and PADF_A
   call nz, shoot
 
-  ld a, [BulletXPos]            ; Move bullet to the right
-  inc a
-  ld [BulletXPos], a
+  call updatebullets
 
   jr loop
 
@@ -136,11 +130,11 @@ moveup:
   ld a, [AirplaneYPos]
 
   cp 16                         ; If the y position is 16 already, return
-  jr z, .retpop
+  jr z, .popret
 
   dec a                         ; Move up
   ld [AirplaneYPos], a
-.retpop:
+.popret:
   pop af
   ret
 
@@ -150,24 +144,175 @@ movedown:
   ld a, [AirplaneYPos]
 
   cp 152                        ; If the y position is 144, return
-  jr z, .retpop
+  jr z, .popret
 
   inc a                         ; Move down
   ld [AirplaneYPos], a
-.retpop:
+.popret:
   pop af
   ret
 
 shoot:
   push af
+  push bc
+  push hl
+
+  call getinactivebullet          ; Get an active bullet into h
+  ld b, h                         ; Save this
+  jr z, .skipshoot                ; Skip if there are no active bullets
+
+  call getbulletsprite
 
   ld a, [AirplaneYPos]
-  ld [BulletYPos], a
+  ld [hl], a                    ; Set to the airplane's y
 
+  inc l
   ld a, [AirplaneXPos]
-  ld [BulletXPos], a
+  ld [hl], a                    ; Set to the airplane's x
 
+  ld h, b
+  call getbulletdata
+  ld [hl], 1                    ; Activate the bullet
+
+.skipshoot:
+  pop hl
+  pop bc
   pop af
+  ret
+
+; Bullet stuff
+initbullets:
+  push af
+  push bc
+  push hl
+
+  ld a, _MAXBULLETS
+  ld b, a                       ; How many times to loop
+.initloop:
+  dec b                         ; Decrement bullet #
+
+  ld h, b                       ; Put bullet # into b to get the sprite start
+  call getbulletsprite          ; Sprite start location now in hl
+
+  ld [hl], 32                    ; Y Pos
+  inc l
+  ld [hl], 13                    ; X pos
+  inc l
+  ld [hl], 4                     ; Tile num
+  inc l
+  ld [hl], %00000000             ; Sprite attrs
+
+  ld h, b
+  call getbulletdata             ; Get bullet data start in hl
+
+  ld [hl], 0                     ; Bullet not active
+
+  ld a, b
+  cp 0
+  jr nz, .initloop               ; If bullet # is not 0, loop again
+
+  pop hl
+  pop bc
+  pop af
+  ret
+
+; Move all active bullets
+updatebullets:
+  push af
+  push bc
+  push hl
+
+  ld a, _MAXBULLETS
+  ld b, a                       ; How many times to loop
+
+.updateloop:
+  dec b
+
+  ld h, b
+  call getbulletdata
+
+  ld a, [hl]
+  cp 0
+  jr z, .skipmove               ; If the bullet is not active, dont move it
+
+  ld h, b
+  call getbulletsprite
+  inc l                         ; X pos
+
+  ld a, [hl]
+  inc a
+  ld [hl], a                    ; Do move
+
+.skipmove:
+  ld a, b
+  cp 0
+  jr nz, .updateloop            ; Loop if not the last bullet
+
+  pop hl
+  pop bc
+  pop af
+  ret
+
+; Get the bullet sprite start location for the bullet # specified in register h, returns in register hl
+getbulletsprite:
+  push bc
+
+  ld b, 0
+  ld c, h
+
+  ld hl, BulletSpriteStart
+  add hl, bc
+  add hl, bc
+  add hl, bc
+  add hl, bc                    ; SpriteStart + h * 4
+
+  pop bc
+  ret
+
+; Get the bullet data start location for the bullet # specified in register h, returns in register hl
+getbulletdata:
+  push bc
+
+  ld b, 0
+  ld c, h
+
+  ld hl, _BULLETDATA
+  add hl, bc                    ; DataStart + h * 1
+
+  pop bc
+  ret
+
+; Get the index of the first inactive bullet in h, if there isn't one, the z flag will be set
+getinactivebullet:
+  push af
+  push bc
+
+  ld a, _MAXBULLETS
+  ld b, a                       ; How many times to loop
+.getinactiveloop:
+  dec b
+
+  ld h, b
+  call getbulletdata
+  ld a, [hl]
+
+  cp 1                          ; Is bullet active
+  jr z, .continue               ; Skip if so
+
+  ld h, b
+  jr .popret                    ; Got what we needed, return
+
+.continue:
+  ld a, b
+  cp 0
+  jr nz, .getinactiveloop         ; Loop if not last bullet
+
+.popret:
+  pop bc
+  pop af
+  ret
+
+; End bullet stuff
 
 getinput:
   push af
