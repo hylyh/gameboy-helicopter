@@ -7,9 +7,12 @@ _OAMDATALENGTH EQU $A0
 _INPUT EQU _OAMDATA+_OAMDATALENGTH ; Put input data at the end of the oam data
 
 ; Bullet data - 1 byte: 0 if not active, otherwise it is
-_MAXBULLETS EQU 15
+_MAXBULLETS EQU 20
 _BULLETDATA EQU _INPUT+1        ; Store the bullet data at once past input
-_BULLETEDATALENGTH EQU _MAXBULLETS*1 ; Only one byte of data for now
+_BULLETDATALENGTH EQU _MAXBULLETS*1 ; Only one byte of data for now
+
+_SHOOTDELAY EQU 20              ; How many ticks to wait between shooting
+_SHOOTDELAYLOC EQU _BULLETDATA+_BULLETDATALENGTH
 
 
                 RSSET _RAM      ; Base location is _RAM
@@ -121,6 +124,7 @@ loop:
   call nz, shoot
 
   call updatebullets
+  call updateshootcounter
 
   jr loop
 
@@ -157,9 +161,16 @@ shoot:
   push bc
   push hl
 
-  call getinactivebullet          ; Get an active bullet into h
-  ld b, h                         ; Save this
-  jr z, .skipshoot                ; Skip if there are no active bullets
+  call getinactivebullet        ; Get an active bullet into h
+  ld b, h                       ; Save this
+  jr z, .skipshoot              ; Skip if there are no active bullets
+
+  ld a, [_SHOOTDELAYLOC]
+  cp 0
+  jr nz, .skipshoot             ; If the delay is not at 0, dont shoot
+
+  ld a, _SHOOTDELAY
+  ld [_SHOOTDELAYLOC], a        ; Reset the shoot delay
 
   call getbulletsprite
 
@@ -186,6 +197,9 @@ initbullets:
   push bc
   push hl
 
+  ld a, 0
+  ld [_SHOOTDELAYLOC], a
+
   ld a, _MAXBULLETS
   ld b, a                       ; How many times to loop
 .initloop:
@@ -194,13 +208,13 @@ initbullets:
   ld h, b                       ; Put bullet # into b to get the sprite start
   call getbulletsprite          ; Sprite start location now in hl
 
-  ld [hl], 32                    ; Y Pos
+  ld [hl], 0                    ; Y Pos
   inc l
-  ld [hl], 13                    ; X pos
+  ld [hl], 0                    ; X pos
   inc l
-  ld [hl], 4                     ; Tile num
+  ld [hl], 4                    ; Tile num
   inc l
-  ld [hl], %00000000             ; Sprite attrs
+  ld [hl], %00000000            ; Sprite attrs
 
   ld h, b
   call getbulletdata             ; Get bullet data start in hl
@@ -257,6 +271,21 @@ updatebullets:
 
   pop hl
   pop bc
+  pop af
+  ret
+
+updateshootcounter:
+  push af
+
+  ld a, [_SHOOTDELAYLOC]
+
+  cp a, 0
+  jr z, .updateshootpopret      ; If it's already 0, return
+
+  dec a
+  ld [_SHOOTDELAYLOC], a        ; Decrement counter
+
+.updateshootpopret
   pop af
   ret
 
