@@ -243,6 +243,13 @@ updatebullets:
   inc a
   ld [hl], a                    ; Do move
 
+  cp 168                        ; If deactivate if off screen to the right
+  jr nz, .skipmove
+
+  ld h, b
+  call getbulletdata
+  ld [hl], 0                    ; Deactivate
+
 .skipmove:
   ld a, b
   cp 0
