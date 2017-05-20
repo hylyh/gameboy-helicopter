@@ -90,51 +90,47 @@ loop:
 
   call getinput
 
-  ld a, [rSCX]                  ; Scroll background
-  inc a
-  ld [rSCX], a
-
   ld a, [_INPUT]                ; Check keys
 
   push af                       ; Avoid clobbering a with the and
 
-  and PADF_UP                   ; See if up is pressed
-  call nz, moveup
+  and PADF_LEFT                 ; See if up is pressed
+  call nz, moveleft
 
   pop af
   push af                       ; Don't clobber the a again
 
-  and PADF_DOWN                 ; See if down is pressed
-  call nz, movedown
+  and PADF_RIGHT                ; See if down is pressed
+  call nz, moveright
 
   pop af
 
   jr loop
 
-moveup:
+moveleft:
   push af
 
-  ld a, [HeloYPos]
+  ld a, [HeloXPos]
 
-  cp 16                         ; If the y position is 16 already, return
+  cp 8                          ; If the x position is 8 already, return
   jr z, .popret
 
   dec a                         ; Move up
-  ld [HeloYPos], a
+  ld [HeloXPos], a
 .popret:
   pop af
   ret
 
-movedown:
+moveright:
   push af
 
-  ld a, [HeloYPos]
+  ld a, [HeloXPos]
 
-  cp 152                        ; If the y position is 144, return
+  cp 160                        ; If the y position is 160, return
   jr z, .popret
 
   inc a                         ; Move down
-  ld [HeloYPos], a
+  ld [HeloXPos], a
 .popret:
   pop af
   ret
