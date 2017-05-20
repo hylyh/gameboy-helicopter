@@ -8,10 +8,10 @@ _INPUT EQU _OAMDATA+_OAMDATALENGTH ; Put input data at the end of the oam data
 
 
                 RSSET _RAM      ; Base location is _RAM
-AirplaneYPos    RB 1            ; Set each to an incrementing location
-AirplaneXPos    RB 1
-AirplaneTileNum RB 1
-AirplaneAttrs   RB 1
+HeloYPos    RB 1            ; Set each to an incrementing location
+HeloXPos    RB 1
+HeloTileNum RB 1
+HeloAttrs   RB 1
 
 SECTION "Vblank",ROM0[$0040]
   jp _DMACODE
@@ -59,7 +59,7 @@ initscreen:
 
   ld hl, Sprites                ; Load the tile data into Vram
   ld de, _VRAM
-  ld bc, 16*5
+  ld bc, 16*(SpritesEnd-Sprites)
   call mem_Copy
 
   ld a, 0                       ; Clear sprite table
@@ -75,14 +75,14 @@ initscreen:
   call mem_SetVRAM
 
 initsprite:
-  ld a, 64                      ; Initialize airplane sprite
-  ld [AirplaneYPos], a
+  ld a, 64                      ; Initialize helo sprite
+  ld [HeloYPos], a
   ld a, 16
-  ld [AirplaneXPos], a
+  ld [HeloXPos], a
   ld a, 1
-  ld [AirplaneTileNum], a
+  ld [HeloTileNum], a
   ld a, %00000000
-  ld [AirplaneAttrs], a
+  ld [HeloAttrs], a
 
 loop:
   halt
@@ -114,13 +114,13 @@ loop:
 moveup:
   push af
 
-  ld a, [AirplaneYPos]
+  ld a, [HeloYPos]
 
   cp 16                         ; If the y position is 16 already, return
   jr z, .popret
 
   dec a                         ; Move up
-  ld [AirplaneYPos], a
+  ld [HeloYPos], a
 .popret:
   pop af
   ret
@@ -128,13 +128,13 @@ moveup:
 movedown:
   push af
 
-  ld a, [AirplaneYPos]
+  ld a, [HeloYPos]
 
   cp 152                        ; If the y position is 144, return
   jr z, .popret
 
   inc a                         ; Move down
-  ld [AirplaneYPos], a
+  ld [HeloYPos], a
 .popret:
   pop af
   ret
@@ -233,13 +233,13 @@ Sprites:
   DB %00000000,%00000000
   DB %00000000,%00000000
 
-  DB %00000000,%00000000        ; Airplane!
+  DB %00000000,%00000000        ; Helicopter!
+  DB %01111110,%01111110
   DB %00001000,%00001000
   DB %01001000,%01001000
   DB %01111110,%01111110
   DB %01111110,%01111110
-  DB %00001000,%00001000
-  DB %00001000,%00001000
+  DB %00111110,%00111110
   DB %00000000,%00000000
 
   DB %01000000,%00000000        ; Background tile
@@ -250,12 +250,4 @@ Sprites:
   DB %01000000,%00000000
   DB %00000000,%00000000
   DB %00100000,%00000000
-
-  DB %00000000,%00000000        ; Enemy
-  DB %00000000,%00011000
-  DB %00000000,%00100100
-  DB %00000000,%01011010
-  DB %00000000,%01011010
-  DB %00000000,%00100100
-  DB %00000000,%00011000
-  DB %00000000,%00000000
+SpritesEnd:
