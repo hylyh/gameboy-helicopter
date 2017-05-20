@@ -5,10 +5,15 @@ _DMACODE EQU $FF80
 _OAMDATA EQU _RAM               ; Must be a multiple of $100
 _OAMDATALENGTH EQU $A0
 _INPUT EQU _OAMDATA+_OAMDATALENGTH ; Put input data at the end of the oam data
+_LASTINPUT EQU _INPUT+1
+
+_FLYAMOUNT EQU 40               ; How much to go up
+_FALLSPEED EQU _LASTINPUT+1     ; Save this so we can make it accelerate
+_FALLDIR EQU _FALLSPEED+1       ; 0 is down
 
 
-                RSSET _RAM      ; Base location is _RAM
-HeloYPos    RB 1            ; Set each to an incrementing location
+            RSSET _RAM          ; Base location is _RAM
+HeloYPos    RB 1                ; Set each to an incrementing location
 HeloXPos    RB 1
 HeloTileNum RB 1
 HeloAttrs   RB 1
@@ -83,6 +88,10 @@ initsprite:
   ld [HeloTileNum], a
   ld a, %00000000
   ld [HeloAttrs], a
+  ld a, 0
+  ld [_FALLSPEED], a
+  ld a, 0
+  ld [_FALLDIR], a
 
 loop:
   halt
@@ -104,6 +113,14 @@ loop:
   call nz, moveright
 
   pop af
+  push af
+
+  and PADF_UP
+  call nz, moveup
+
+  pop af
+
+  call dofall
 
   jr loop
 
@@ -135,9 +152,136 @@ moveright:
   pop af
   ret
 
+moveup:
+  push af
+
+  ld a, [_LASTINPUT]
+  and PADF_UP
+  jr nz, .popret                ; If up was held on the last frame, don't do this again
+
+  ld a, [_FALLDIR]
+  cp 0
+  jr z, .slowdown               ; Helo is going down
+  jr .goup                      ; Helo is going up
+
+.goup:                          ; If the helo is going up, go up more
+  ld a, [_FALLSPEED]
+  add a, _FLYAMOUNT
+  ld [_FALLSPEED], a
+  jr nc, .popret                ; Didn't go above 255, no prob
+
+  ld a, 255
+  ld [_FALLSPEED], a            ; Cap the speed
+  jr .popret
+
+.slowdown:                      ; If the helo is going down, slow it down
+  ld a, [_FALLSPEED]
+  sub a, _FLYAMOUNT             ; Slow down
+  ld [_FALLSPEED], a
+  jr nc, .popret                ; If didnt go below 0, return
+
+  call changefalldir            ; Start flying
+
+  ld b, a
+  ld a, 255
+  sub a, b                      ; Get the amount we overflowed by
+
+  ld [_FALLSPEED], a            ; And set that as the fallspeed
+
+.popret:
+  pop af
+  ret
+
+dofall:
+  push af
+  push bc
+
+  ld a, [_FALLDIR]
+  cp 0
+  call z, fall                  ; Down if dir is 0
+  call nz, fly                  ; Go up if it's not 0
+
+.popret:
+  pop bc
+  pop af
+  ret
+
+fall:
+  push af
+  push bc
+
+  ld a, [HeloYPos]
+  ld b, a                       ; B holds y pos
+
+  ld a, [_FALLSPEED]
+  sra a
+  sra a
+  sra a
+  sra a
+  and %00001111                 ; Shift two to the right, set leftmost to 0
+
+  add a, b
+
+  ld [HeloYPos], a
+
+  ld a, [_FALLSPEED]
+  add a, 1
+  ld [_FALLSPEED], a            ; Increase the fall speed (fall faster)
+  jr nc, .popret                ; Didn't overflow
+
+  ld a, 255
+  ld [_FALLSPEED], a            ; Cap fallspeed
+
+.popret:
+  pop bc
+  pop af
+  ret
+
+fly:
+  push af
+  push bc
+
+  ld a, [_FALLSPEED]
+  sra a
+  sra a
+  sra a
+  sra a
+  and %00001111                 ; Shift two to the right, set leftmost to 0
+
+  ld b, a
+
+  ld a, [HeloYPos]
+
+  sub a, b                      ; Move up
+  jr c, .bounce                 ; bounce off top
+
+  ld [HeloYPos], a
+
+  ld a, [_FALLSPEED]
+  sub a, 1
+  ld [_FALLSPEED], a            ; Decrease the fall speed (fly up slower)
+
+  jr nc, .popret                ; Didn't go below 0, no problem
+
+  call changefalldir
+  jr .popret
+
+.bounce:
+  ld a, 8
+  ld [HeloYPos], a
+  call changefalldir
+
+.popret:
+  pop bc
+  pop af
+  ret
+
 getinput:
   push af
   push bc
+
+  ld a, [_INPUT]
+  ld [_LASTINPUT], a            ; Save the previous frame's input
 
   ld a, %00100000               ; select bit 5 for button keys
   ld [rP1], a
@@ -168,6 +312,21 @@ getinput:
   ld [_INPUT], a                ; save the result
 
   pop bc
+  pop af
+  ret
+
+changefalldir:
+  push af
+
+  ld a, 0
+  ld [_FALLSPEED], a            ; Set fallspeed to 0
+
+  ld a, [_FALLDIR]
+  cpl
+  and %00000001                 ; Only flip the last bit
+
+  ld [_FALLDIR], a              ; Switch the fall direction
+
   pop af
   ret
 
