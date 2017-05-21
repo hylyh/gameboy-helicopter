@@ -7,7 +7,7 @@ _OAMDATALENGTH EQU $A0
 _INPUT EQU _OAMDATA+_OAMDATALENGTH ; Put input data at the end of the oam data
 _LASTINPUT EQU _INPUT+1
 
-_FLYAMOUNT EQU $20              ; How much to go up
+_FLYAMOUNT EQU $10              ; How much to go up
 _MAXFLYSPEED EQU $45
 _MAXFALLSPEED EQU $35
 _FALLSPEED EQU _LASTINPUT+1     ; Save this so we can make it accelerate
@@ -118,7 +118,7 @@ loop:
   pop af
   push af
 
-  and PADF_UP
+  and PADF_A
   call nz, moveup
 
   pop af
@@ -159,7 +159,7 @@ moveup:
   push af
 
   ld a, [_LASTINPUT]
-  and PADF_UP
+  and PADF_A
   jr nz, .popret                ; If up was held on the last frame, don't do this again
 
   ld a, [_FALLDIR]
