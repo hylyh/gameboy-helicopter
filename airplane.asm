@@ -7,9 +7,10 @@ _OAMDATALENGTH EQU $A0
 _INPUT EQU _OAMDATA+_OAMDATALENGTH ; Put input data at the end of the oam data
 _LASTINPUT EQU _INPUT+1
 
-_FLYAMOUNT EQU 40               ; How much to go up
+_FLYAMOUNT EQU 50               ; How much to go up
 _FALLSPEED EQU _LASTINPUT+1     ; Save this so we can make it accelerate
 _FALLDIR EQU _FALLSPEED+1       ; 0 is down
+_YPOSDECIMAL EQU _FALLDIR+1     ; Used for subpixel positioning on the y
 
 
             RSSET _RAM          ; Base location is _RAM
@@ -210,19 +211,7 @@ fall:
   push af
   push bc
 
-  ld a, [HeloYPos]
-  ld b, a                       ; B holds y pos
-
-  ld a, [_FALLSPEED]
-  sra a
-  sra a
-  sra a
-  sra a
-  and %00001111                 ; Shift two to the right, set leftmost to 0
-
-  add a, b
-
-  ld [HeloYPos], a
+  call applyfallspeed
 
   ld a, [_FALLSPEED]
   add a, 1
@@ -241,21 +230,9 @@ fly:
   push af
   push bc
 
-  ld a, [_FALLSPEED]
-  sra a
-  sra a
-  sra a
-  sra a
-  and %00001111                 ; Shift two to the right, set leftmost to 0
+  call applyfallspeed
 
-  ld b, a
-
-  ld a, [HeloYPos]
-
-  sub a, b                      ; Move up
   jr c, .bounce                 ; bounce off top
-
-  ld [HeloYPos], a
 
   ld a, [_FALLSPEED]
   sub a, 1
@@ -311,6 +288,73 @@ getinput:
 
   ld [_INPUT], a                ; save the result
 
+  pop bc
+  pop af
+  ret
+
+applyfallspeed:
+  push af
+  push bc
+  push de
+  push hl
+
+  ld a, [_FALLSPEED]
+  sra a
+  sra a
+  sra a
+  sra a
+  and %00001111                 ; Shift two to the right, set leftmost to 0
+
+  ld d, a                       ; put high four bits of fallspeed into high bits of de
+
+  ld a, [_FALLSPEED]
+  sla a
+  sla a
+  sla a
+  sla a
+  and %11110000
+
+  ld e, a                       ; Put low four bits of fallspeed in low bits of de
+
+  ld a, [HeloYPos]
+  ld h, a                       ; Load y position into high of hl
+
+  ld a, [_YPOSDECIMAL]
+  ld l, a                       ; Load decimal into low of hl
+
+  ld a, [_FALLDIR]
+  cp 0                          ; Are we going down?
+
+  jr z, .doadd                  ; Going down
+  jr .dosub                     ; Going up
+
+.doadd:
+  add hl, de
+
+  ld a, h
+  ld [HeloYPos], a
+
+  ld a, l
+  ld [_YPOSDECIMAL], a
+
+  jr .popret
+
+.dosub:
+  ld a, h
+  sub a, d                      ; THERE'S NO 16 BIT SUB
+
+  ld [HeloYPos], a
+
+  ld a, l
+  sbc a, e
+
+  ld [_YPOSDECIMAL], a
+
+  jr .popret
+
+.popret:
+  pop hl
+  pop de
   pop bc
   pop af
   ret
