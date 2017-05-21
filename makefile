@@ -4,7 +4,7 @@ FIX=rgbfix
 
 EMU=wine /Users/jayhay/Documents/gbshit/bgb/bgb.exe
 
-TARGET=airplane
+TARGET=helicopter
 
 .PHONY: run clean
 
