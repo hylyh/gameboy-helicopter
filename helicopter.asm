@@ -236,9 +236,16 @@ fly:
   push af
   push bc
 
+  ld a, [HeloYPos]              ; Save pos before
+  ld b, a
+
   call applyfallspeed
 
-  jr c, .bounce                 ; bounce off top
+  ld a, [HeloYPos]
+  ld c, a
+  ld a, b
+  sub a, c
+  call c, .stopattop            ; If the new position is higher than the old one it wrapped around
 
   ld a, [_FALLSPEED]
   sub a, 1
@@ -249,11 +256,14 @@ fly:
   call changefalldir
   jr .popret
 
-.bounce:
+.stopattop:
   ld a, 8
   ld [HeloYPos], a
 
-  call changefalldir
+  ld a, 0
+  ld [_FALLSPEED], a
+
+  ret
 
 .popret:
   pop bc
