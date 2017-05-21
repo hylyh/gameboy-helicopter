@@ -7,7 +7,7 @@ _OAMDATALENGTH EQU $A0
 _INPUT EQU _OAMDATA+_OAMDATALENGTH ; Put input data at the end of the oam data
 _LASTINPUT EQU _INPUT+1
 
-_FLYAMOUNT EQU $40              ; How much to go up
+_FLYAMOUNT EQU $20              ; How much to go up
 _MAXFLYSPEED EQU $45
 _MAXFALLSPEED EQU $35
 _FALLSPEED EQU _LASTINPUT+1     ; Save this so we can make it accelerate
@@ -217,6 +217,12 @@ fall:
 
   call applyfallspeed
 
+  ld a, [HeloYPos]
+  ld b, a
+  ld a, 152
+  sub a, b
+  call c, .stopatbot            ; If the new position is higher than 136, stop
+
   ld a, [_FALLSPEED]
   add a, 1
   ld [_FALLSPEED], a            ; Increase the fall speed (fall faster)
@@ -226,6 +232,17 @@ fall:
 
   ld a, _MAXFALLSPEED
   ld [_FALLSPEED], a            ; Cap fallspeed
+
+  jr .popret
+
+.stopatbot:
+  ld a, 152
+  ld [HeloYPos], a
+
+  ld a, 0
+  ld [_FALLSPEED], a
+
+  ret
 
 .popret:
   pop bc
