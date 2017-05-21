@@ -7,7 +7,9 @@ _OAMDATALENGTH EQU $A0
 _INPUT EQU _OAMDATA+_OAMDATALENGTH ; Put input data at the end of the oam data
 _LASTINPUT EQU _INPUT+1
 
-_FLYAMOUNT EQU 50               ; How much to go up
+_FLYAMOUNT EQU $40              ; How much to go up
+_MAXFLYSPEED EQU $45
+_MAXFALLSPEED EQU $35
 _FALLSPEED EQU _LASTINPUT+1     ; Save this so we can make it accelerate
 _FALLDIR EQU _FALLSPEED+1       ; 0 is down
 _YPOSDECIMAL EQU _FALLDIR+1     ; Used for subpixel positioning on the y
@@ -169,9 +171,11 @@ moveup:
   ld a, [_FALLSPEED]
   add a, _FLYAMOUNT
   ld [_FALLSPEED], a
-  jr nc, .popret                ; Didn't go above 255, no prob
 
-  ld a, 255
+  sub a, _MAXFLYSPEED
+  jr c, .popret                ; If speed isn't over max speed, no prob
+
+  ld a, _MAXFLYSPEED
   ld [_FALLSPEED], a            ; Cap the speed
   jr .popret
 
@@ -216,9 +220,11 @@ fall:
   ld a, [_FALLSPEED]
   add a, 1
   ld [_FALLSPEED], a            ; Increase the fall speed (fall faster)
-  jr nc, .popret                ; Didn't overflow
 
-  ld a, 255
+  sub a, _MAXFALLSPEED
+  jr c, .popret                 ; If the speed is below the max, no prob
+
+  ld a, _MAXFALLSPEED
   ld [_FALLSPEED], a            ; Cap fallspeed
 
 .popret:
@@ -246,6 +252,7 @@ fly:
 .bounce:
   ld a, 8
   ld [HeloYPos], a
+
   call changefalldir
 
 .popret:
