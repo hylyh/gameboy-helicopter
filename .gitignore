@@ -1,0 +1,10 @@
+# Just a thing I'm keeping around
+_boilerplate.asm
+
+# Build results
+*.obj
+*.gb
+
+# Python stuff
+venv
+virtualenv
