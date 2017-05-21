@@ -4,6 +4,7 @@ _boilerplate.asm
 # Build results
 *.obj
 *.gb
+*.built
 
 # Python stuff
 venv

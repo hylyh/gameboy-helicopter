@@ -1,3 +1,7 @@
+PYTHON=python
+VIRTUALENV=source venv/bin/activate
+
+PREPROC=$(VIRTUALENV); $(PYTHON) utils/preprocessor.py
 ASM=rgbasm -iincludes/
 LINK=rgblink
 FIX=rgbfix
@@ -10,10 +14,13 @@ TARGET=helicopter
 
 all: build run
 
-build: asm link fix
+build: preprocess asm link fix
 
-asm: $(TARGET).asm
-	$(ASM) -o$(TARGET).obj $(TARGET).asm
+preprocess: $(TARGET).asm
+	$(PREPROC) $(TARGET).asm $(TARGET).asm.built
+
+asm: $(TARGET).asm.built
+	$(ASM) -o$(TARGET).obj $(TARGET).asm.built
 
 link: $(TARGET).obj
 	$(LINK) -o$(TARGET).gb $(TARGET).obj
@@ -25,4 +32,4 @@ run:
 	$(EMU) $(TARGET).gb
 
 clean:
-	$(RM) $(TARGET).obj $(TARGET).gb
+	$(RM) $(TARGET).obj $(TARGET).gb $(TARGET).asm.built
