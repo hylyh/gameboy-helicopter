@@ -7,7 +7,7 @@ _OAMDATALENGTH EQU $A0
 _INPUT EQU _OAMDATA+_OAMDATALENGTH ; Put input data at the end of the oam data
 _LASTINPUT EQU _INPUT+1
 
-_FLYAMOUNT EQU $10              ; How much to go up
+_BOOSTAMOUNT EQU $10            ; How much to go up
 _MAXFLYSPEED EQU $45
 _MAXFALLSPEED EQU $35
 _FALLSPEED EQU _LASTINPUT+1     ; Save this so we can make it accelerate
@@ -169,7 +169,7 @@ moveup:
 
 .goup:                          ; If the helo is going up, go up more
   ld a, [_FALLSPEED]
-  add a, _FLYAMOUNT
+  add a, _BOOSTAMOUNT
   ld [_FALLSPEED], a
 
   sub a, _MAXFLYSPEED
@@ -181,7 +181,7 @@ moveup:
 
 .slowdown:                      ; If the helo is going down, slow it down
   ld a, [_FALLSPEED]
-  sub a, _FLYAMOUNT             ; Slow down
+  sub a, _BOOSTAMOUNT             ; Slow down
   ld [_FALLSPEED], a
   jr nc, .popret                ; If didnt go below 0, return
 
