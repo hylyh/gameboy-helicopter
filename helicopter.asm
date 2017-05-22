@@ -421,7 +421,6 @@ setbuildings:
   ld b, a                       ; How many bytes left
 
 .loop:
-
   ld a, [hl]
   ld d, a                       ; Building column
 
@@ -487,11 +486,11 @@ drawbuilding:
   adc a, 0
   ld h, a                       ; Add the carry (if any) into h
 
-.drawloop:                      ; We have hl at the start position
-  ld a, 2
+  ld a, 3
   ld bc, 1
-  call mem_SetVRAM
+  call mem_SetVRAM              ; Draw top of building first
 
+.drawloop:                      ; We have hl at the start position
   ld a, l
   add a, 31
   ld l, a                       ; Move down to the next row
@@ -499,6 +498,10 @@ drawbuilding:
   ld a, h
   adc a, 0
   ld h, a                       ; Add the carry (if any) into h
+
+  ld a, 2
+  ld bc, 1
+  call mem_SetVRAM              ; Draw building tile
 
   dec e
   ld a, e
@@ -538,14 +541,12 @@ dmaend:
 StopLCD:
   ld a, [rLCDC]
   rlca                          ; Put the high bit of LCDC into the carry flag
-
   ret nc                        ; If screen is already off, exit
 
-; Loop until vblank
-stoplcd_wait:
+.stoplcd_wait:                  ; Loop until vblank
   ld a, [rLY]                   ; Get LCDC y coord
   cp 145                        ; Is it on line 145?
-  jr nz, stoplcd_wait           ; if not, keep waiting
+  jr nz, .stoplcd_wait          ; if not, keep waiting
 
   ld a, [rLCDC]                 ; Get the current LCDC val
   res 7, a                      ; reset bit 7
@@ -559,7 +560,7 @@ StartLCD:
   ld [rLCDC], a
   ret
 
-Sprites: {{ sprites("blank", "helo", "building") }}
+Sprites: {{ sprites("blank", "helo", "building", "building_top") }}
 SpritesEnd:
 
 Buildings:                      ; column, height
