@@ -14,7 +14,6 @@ _FALLSPEED EQU _LASTINPUT+1     ; Save this so we can make it accelerate
 _FALLDIR EQU _FALLSPEED+1       ; 0 is down
 _YPOSDECIMAL EQU _FALLDIR+1     ; Used for subpixel positioning on the y
 
-
             RSSET _RAM          ; Base location is _RAM
 HeloYPos    RB 1                ; Set each to an incrementing location
 HeloXPos    RB 1
@@ -77,10 +76,12 @@ initscreen:
 
   call StartLCD                 ; Free to start the LCD again
 
-  ld hl, Background             ; Clear screen with background tile
-  ld de, _SCRN0
+  ld a, 0                       ; Clear screen with background tile
+  ld hl, _SCRN0
   ld bc, SCRN_VX_B*SCRN_VY_B    ; width * height
-  call mem_CopyVRAM
+  call mem_SetVRAM
+
+  call setbuildings
 
 initsprite:
   ld a, 64                      ; Initialize helo sprite
@@ -408,6 +409,108 @@ changefalldir:
   pop af
   ret
 
+setbuildings:
+  push af
+  push bc
+  push de
+  push hl
+
+  ld hl, Buildings              ; Buildings addr in hl
+
+  ld a, BuildingsEnd-Buildings
+  ld b, a                       ; How many bytes left
+
+.loop:
+
+  ld a, [hl]
+  ld d, a                       ; Building column
+
+  inc hl
+
+  ld a, [hl]
+  ld e, a                       ; Building height
+
+  call drawbuilding
+
+  inc hl                        ; Next building
+
+  dec b
+  dec b                         ; Two bytes down
+
+  ld a, b
+  cp 0
+
+  jr nz, .loop                  ; Loop if not
+
+  pop hl
+  pop de
+  pop bc
+  pop af
+  ret
+
+; d - building column
+; e - building height
+drawbuilding:
+  push af
+  push bc
+  push de
+  push hl
+
+  ld a, 18                      ; How many rows on screen
+  ld b, e
+  sub a, b                      ; Get top row of building
+
+  ld b, a                       ; Counter in b
+
+  ld hl, _SCRN0
+
+.findstartloop:
+
+  ld a, l
+  add a, 32
+  ld l, a
+
+  ld a, h
+  adc a, 0
+  ld h, a                       ; Add the carry (if any) into h
+
+  dec b
+  ld a, b
+  cp 0
+  jr nz, .findstartloop         ; Loop if not at the end
+
+  ld a, l
+  add a, d
+  ld l, a                       ; Now we add the column pos
+
+  ld a, h
+  adc a, 0
+  ld h, a                       ; Add the carry (if any) into h
+
+.drawloop:                      ; We have hl at the start position
+  ld a, 2
+  ld bc, 1
+  call mem_SetVRAM
+
+  ld a, l
+  add a, 31
+  ld l, a                       ; Move down to the next row
+
+  ld a, h
+  adc a, 0
+  ld h, a                       ; Add the carry (if any) into h
+
+  dec e
+  ld a, e
+  cp 0
+  jr nz, .drawloop              ; Keep looping if not at bottom of building
+
+  pop hl
+  pop de
+  pop bc
+  pop af
+  ret
+
 ; DMA stuff
 initdma:
   ld de, _DMACODE               ; Copy the dma code to hram
@@ -459,37 +562,9 @@ StartLCD:
 Sprites: {{ sprites("blank", "helo", "building") }}
 SpritesEnd:
 
-Background:                     ; I'm so sorry christine
-  DB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-  DB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-  DB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-  DB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-  DB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-  DB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-  DB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-  DB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-  DB 0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-  DB 0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-  DB 0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-  DB 0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-  DB 0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-  DB 0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-  DB 0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-  DB 0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-  DB 0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-  DB 0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-
-  DB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-  DB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-  DB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-  DB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-  DB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-  DB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-  DB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-  DB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-  DB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-  DB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-  DB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-  DB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-  DB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-  DB 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Buildings:                      ; column, height
+  DB 2, 8
+  DB 4, 5
+  DB 9, 13
+  DB 15, 7
+BuildingsEnd:
