@@ -126,6 +126,8 @@ loop:
 
   call dofall
 
+  call getbuildingbelowhelo
+
   jr loop
 
 moveleft:
@@ -215,6 +217,37 @@ dofall:
 fall:
   push af
   push bc
+  push de
+
+  call getbuildingbelowhelo     ; Puts distance in d
+
+  ld a, d
+  cp 0
+  jr z, .onbuilding             ; If distance is 0, we landed!
+
+  ld a, [_FALLSPEED]
+  sra a
+  sra a
+  sra a
+  sra a
+  and %00001111                 ; Right four bits of fallspeed
+  sub a, d
+  jr c, .skipbuilding           ; Fallspeed wont take us into the building, no prob
+
+.onbuilding:
+
+  ld b, a                       ; Save the difference
+  ld a, [HeloYPos]
+  add a, b                      ; Add the difference to the y pos
+  ld [HeloYPos], a
+
+  ld a, 0
+  ld [_FALLSPEED], a            ; Set fallspeed to 0
+  ld [_YPOSDECIMAL], a          ; As well as the position decimal
+
+  jr .popret                    ; Nothin else
+
+.skipbuilding:
 
   call applyfallspeed
 
@@ -246,6 +279,7 @@ fall:
   ret
 
 .popret:
+  pop de
   pop bc
   pop af
   ret
@@ -455,7 +489,7 @@ drawbuilding:
   push de
   push hl
 
-  ld a, 18                      ; How many rows on screen
+  ld a, SCRN_Y_B                ; How many rows on screen
   ld b, e
   sub a, b                      ; Get top row of building
 
@@ -510,6 +544,68 @@ drawbuilding:
 
   pop hl
   pop de
+  pop bc
+  pop af
+  ret
+
+; Try to find a building below the helo, if there is one put the dist to it in d. else put 255
+getbuildingbelowhelo:
+  push af
+  push bc
+  push hl
+
+  ld a, [HeloXPos]
+  sub a, 4
+  sra a
+  sra a
+  sra a                         ; Divide x pos by 8 to get tile pos
+  ld b, a
+
+  ld c, BuildingsEnd-Buildings  ; How many bytes to go through
+  ld hl, Buildings
+
+.buildingloop:
+  ld a, [hl]                    ; Get column
+  cp b                          ; Is this the column we're looking for?
+  inc hl                        ; Put hl at height if we need it
+  jr z, .found                  ; If so, found!
+
+  inc hl                        ; Next building
+  dec c
+  dec c                         ; Two bytes
+  ld a, c
+  cp 0
+  jr nz, .buildingloop          ; Not at the end of the buildings, keep going
+
+.nobuilding:
+  ld d, 255                     ; Didn't find anything
+
+  jr .popret
+
+.found:
+
+  ld a, [HeloYPos]
+  sub a, 8
+  ld b, a
+
+  ld a, [hl]                    ; Get the building's height
+  ld d, a
+  ld a, SCRN_Y_B
+  sub a, d                      ; Get y tile pos from top of screen
+
+  sla a
+  sla a
+  sla a                         ; Multiply by 8 to get pixel pos
+
+  sub a, b                      ; Subtract building top y pos by helo y pos
+  jr c, .nobuilding             ; If that result was negative, we're below the building, so no building
+
+  ld d, a                       ; Save the distance in the return register
+
+  jr .popret
+
+.popret:
+  pop hl
   pop bc
   pop af
   ret
