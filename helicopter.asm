@@ -1,5 +1,4 @@
 INCLUDE "includes/gbhw.inc"
-INCLUDE "includes/ibmpc1.inc"
 
 _DMACODE EQU $FF80
 _OAMDATA EQU _RAM               ; Must be a multiple of $100
@@ -8,7 +7,7 @@ _OAMDATALENGTH EQU $A0
 _BOOSTAMOUNT EQU $10            ; How much to go up
 _MAXFLYSPEED EQU $45
 _MAXFALLSPEED EQU $35
-_CRASHSPEED EQU $10             ; If you hit a building faster than this you crash
+_CRASHSPEED EQU $19             ; If you hit a building faster than this you crash
 
             RSSET _OAMDATA      ; Base location is _OAMDATA
 HeloYPos    RB 1                ; Set each to an incrementing location
@@ -100,10 +99,16 @@ initsprite:
   ld [_FALLSPEED], a
   ld a, 0
   ld [_FALLDIR], a
+  ld a, 0
+  ld [_CRASHED], a
 
 loop:
   halt
   nop                           ; Always need nop after halt
+
+  ld a, [_CRASHED]
+  and %00000001
+  jr nz, initsprite             ; If you've crashed, start again
 
   call getinput
 
@@ -240,6 +245,15 @@ fall:
 
 .onbuilding:
 
+  push af
+
+  ld a, [_FALLSPEED]
+  ld b, _CRASHSPEED
+  sub a, b
+  jr nc, .crashed               ; Fall speed is more than crash speed
+
+  pop af
+
   ld b, a                       ; Save the difference
   ld a, [HeloYPos]
   add a, b                      ; Add the difference to the y pos
@@ -250,6 +264,14 @@ fall:
   ld [_YPOSDECIMAL], a          ; As well as the position decimal
 
   jr .popret                    ; Nothin else
+
+.crashed:
+  pop af
+
+  ld a, 1
+  ld [_CRASHED], a              ; We crashed
+
+  jr .popret
 
 .skipbuilding:
 
