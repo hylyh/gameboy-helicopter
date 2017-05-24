@@ -4,21 +4,25 @@ INCLUDE "includes/ibmpc1.inc"
 _DMACODE EQU $FF80
 _OAMDATA EQU _RAM               ; Must be a multiple of $100
 _OAMDATALENGTH EQU $A0
-_INPUT EQU _OAMDATA+_OAMDATALENGTH ; Put input data at the end of the oam data
-_LASTINPUT EQU _INPUT+1
 
 _BOOSTAMOUNT EQU $10            ; How much to go up
 _MAXFLYSPEED EQU $45
 _MAXFALLSPEED EQU $35
-_FALLSPEED EQU _LASTINPUT+1     ; Save this so we can make it accelerate
-_FALLDIR EQU _FALLSPEED+1       ; 0 is down
-_YPOSDECIMAL EQU _FALLDIR+1     ; Used for subpixel positioning on the y
+_CRASHSPEED EQU $10             ; If you hit a building faster than this you crash
 
-            RSSET _RAM          ; Base location is _RAM
+            RSSET _OAMDATA      ; Base location is _OAMDATA
 HeloYPos    RB 1                ; Set each to an incrementing location
 HeloXPos    RB 1
 HeloTileNum RB 1
 HeloAttrs   RB 1
+
+             RSSET _OAMDATA+_OAMDATALENGTH
+_INPUT       RB 1               ; Put input data at the end of the oam data
+_LASTINPUT   RB 1
+_FALLSPEED   RB 1               ; Save this so we can make it accelerate
+_FALLDIR     RB 1               ; 0 is down
+_YPOSDECIMAL RB 1               ; Used for subpixel positioning on the y
+_CRASHED     RB 1               ; Flag for if the player has crashed
 
 SECTION "Vblank",ROM0[$0040]
   jp _DMACODE
