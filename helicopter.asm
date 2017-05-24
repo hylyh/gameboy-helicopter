@@ -110,6 +110,10 @@ loop:
   and %00000001
   jr nz, initsprite             ; If you've crashed, start again
 
+  call dofall
+
+  call getbuildingbelowhelo
+
   call getinput
 
   ld a, [_INPUT]                ; Check keys
@@ -133,14 +137,14 @@ loop:
 
   pop af
 
-  call dofall
-
-  call getbuildingbelowhelo
-
   jr loop
 
 moveleft:
   push af
+
+  ld a, [_FALLSPEED]
+  cp 0
+  jr z, .popret                 ; Don't move if fall speed is 0 (means we probably landed)
 
   ld a, [HeloXPos]
 
@@ -155,6 +159,10 @@ moveleft:
 
 moveright:
   push af
+
+  ld a, [_FALLSPEED]
+  cp 0
+  jr z, .popret                 ; Don't move if fall speed is 0 (means we probably landed)
 
   ld a, [HeloXPos]
 
@@ -245,14 +253,14 @@ fall:
 
 .onbuilding:
 
-  push af
+  ld d, a                       ; Save a in d
 
   ld a, [_FALLSPEED]
   ld b, _CRASHSPEED
   sub a, b
   jr nc, .crashed               ; Fall speed is more than crash speed
 
-  pop af
+  ld a, d
 
   ld b, a                       ; Save the difference
   ld a, [HeloYPos]
@@ -266,8 +274,6 @@ fall:
   jr .popret                    ; Nothin else
 
 .crashed:
-  pop af
-
   ld a, 1
   ld [_CRASHED], a              ; We crashed
 
@@ -279,9 +285,9 @@ fall:
 
   ld a, [HeloYPos]
   ld b, a
-  ld a, 152
+  ld a, 151
   sub a, b
-  call c, .stopatbot            ; If the new position is higher than 136, stop
+  jr c, .stopatbot            ; If the new position is higher than 151, stop
 
   ld a, [_FALLSPEED]
   add a, 1
@@ -299,10 +305,15 @@ fall:
   ld a, 152
   ld [HeloYPos], a
 
+  ld a, [_FALLSPEED]
+  ld b, _CRASHSPEED
+  sub a, b
+  jr nc, .crashed               ; Fall speed is more than crash speed
+
   ld a, 0
   ld [_FALLSPEED], a
 
-  ret
+  jr .popret
 
 .popret:
   pop de
