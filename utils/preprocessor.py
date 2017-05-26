@@ -80,7 +80,7 @@ def process(inname, outname=None):
         f.write(''.join(output_lines))
 
 def main():
-    if len(sys.argv) != 2 or len(sys.argv != 3):
+    if len(sys.argv) != 2 and len(sys.argv) != 3:
         print('Please provide a single argument pointing to the .asm you want to process')
         print('Optionally you may provide a second argument specifiying the output file name')
         print('Assuming "' + DEFAULTFILE + '" for testing purposes')
