@@ -11,4 +11,4 @@ Requires [rgbds](https://github.com/rednex/rgbds) to build and I use [bgb](http:
 To build and run in bgb: run `make`. To just build: `make build`. Outputs rom as `helicopter.gb`
 
 ### nyoooom
-![Helicopter gif](http://i.imgur.com/1u0bOND.gif)
+![Helicopter gif](http://i.imgur.com/XtclIkb.gif)
