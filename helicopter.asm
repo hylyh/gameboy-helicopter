@@ -112,8 +112,6 @@ loop:
 
   call dofall
 
-  call getbuildingbelowhelo
-
   call getinput
 
   ld a, [_INPUT]                ; Check keys
@@ -136,6 +134,10 @@ loop:
   call nz, moveup
 
   pop af
+
+  ld a, [rSCX]
+  inc a
+  ld [rSCX], a
 
   jr loop
 
@@ -271,6 +273,10 @@ fall:
   ld [_FALLSPEED], a            ; Set fallspeed to 0
   ld [_YPOSDECIMAL], a          ; As well as the position decimal
 
+  ld a, [HeloXPos]
+  dec a
+  ld [HeloXPos], a
+
   jr .popret                    ; Nothin else
 
 .crashed:
@@ -287,7 +293,7 @@ fall:
   ld b, a
   ld a, 151
   sub a, b
-  jr c, .stopatbot            ; If the new position is higher than 151, stop
+  jr c, .stopatbot              ; If the new position is higher than 151, stop
 
   ld a, [_FALLSPEED]
   add a, 1
@@ -591,7 +597,11 @@ getbuildingbelowhelo:
   push bc
   push hl
 
+  ld a, [rSCX]
+  ld b, a
+
   ld a, [HeloXPos]
+  add a, b                      ; Add the current screen offset
   sub a, 4
   sra a
   sra a
