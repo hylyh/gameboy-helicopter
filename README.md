@@ -2,7 +2,10 @@
 
 Just having some fun with gameboy programming! This is a purely a personal project for learning purposes.
 
-## How to
+## Try it!
+Check the [releases](https://github.com/jessicahayley/gameboy-helicopter/releases/) tab for prebuilt roms, I'll try to update that as I hit major milestones.
+
+## Build it!
 
 The preprocessor requires python2 (3 will work too I believe) and PIL. It also uses a virtualenv to run in. To set this up, install virtualenv (pip install virtualenv) then run `virtualenv venv` from the project root. To install PIL type `source venv/bin/activate` then `pip install Pillow`. Now you can run the preprocessor manually `python utils/preprocessor.py`, or through the makefile.
 
