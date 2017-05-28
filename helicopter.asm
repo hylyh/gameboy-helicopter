@@ -722,20 +722,21 @@ getbuildingbelowhelo:
   sra a
   sra a
   sra a                         ; Divide x pos by 8 to get tile pos
+  and a, %00011111              ; pls no carry flag
   ld b, a
 
-  ld c, _BUILDINGSSIZE          ; How many bytes to go through
+  ld c, _NUMBUILDINGS
   ld hl, _BUILDINGS
 
 .buildingloop:
   ld a, [hl]                    ; Get column
   cp b                          ; Is this the column we're looking for?
-  inc hl                        ; Put hl at height if we need it
   jr z, .found                  ; If so, found!
 
   inc hl                        ; Next building
+  inc hl
+
   dec c
-  dec c                         ; Two bytes
   ld a, c
   cp 0
   jr nz, .buildingloop          ; Not at the end of the buildings, keep going
@@ -746,6 +747,7 @@ getbuildingbelowhelo:
   jr .popret
 
 .found:
+  inc hl                        ; Height
 
   ld a, [HeloYPos]
   sub a, 8
