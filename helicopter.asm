@@ -8,6 +8,8 @@ _BOOSTAMOUNT EQU $10            ; How much to go up
 _MAXFLYSPEED EQU $45
 _MAXFALLSPEED EQU $35
 _CRASHSPEED EQU $19             ; If you hit a building faster than this you crash
+_NUMBUILDINGS EQU 4
+_BUILDINGSSIZE EQU _NUMBUILDINGS*2 ; 2 bytes per
 
             RSSET _OAMDATA      ; Base location is _OAMDATA
 HeloYPos    RB 1                ; Set each to an incrementing location
@@ -17,11 +19,14 @@ HeloAttrs   RB 1
 
              RSSET _OAMDATA+_OAMDATALENGTH
 _INPUT       RB 1               ; Put input data at the end of the oam data
+_SEED        RB 1
 _LASTINPUT   RB 1
 _FALLSPEED   RB 1               ; Save this so we can make it accelerate
 _FALLDIR     RB 1               ; 0 is down
 _YPOSDECIMAL RB 1               ; Used for subpixel positioning on the y
 _CRASHED     RB 1               ; Flag for if the player has crashed
+_BUILDINGS   RB _BUILDINGSSIZE
+_LASTSCROLL  RB 1               ; Last tile x scroll position
 
 SECTION "Vblank",ROM0[$0040]
   jp _DMACODE
@@ -79,12 +84,14 @@ initscreen:
 
   call StartLCD                 ; Free to start the LCD again
 
-  ld a, 0                       ; Clear screen with background tile
-  ld hl, _SCRN0
-  ld bc, SCRN_VX_B*SCRN_VY_B    ; width * height
-  call mem_SetVRAM
+  call initbuildings
+  call drawbuildings
 
-  call setbuildings
+  ld a, 123                     ; blah blah ~random~
+  ld [_SEED], a
+
+  ld a, 255
+  ld [_LASTSCROLL], a
 
 initsprite:
   ld a, 64                      ; Initialize helo sprite
@@ -118,13 +125,13 @@ loop:
 
   push af                       ; Avoid clobbering a with the and
 
-  and PADF_LEFT                 ; See if up is pressed
+  and PADF_LEFT                 ; See if left is pressed
   call nz, moveleft
 
   pop af
   push af                       ; Don't clobber the a again
 
-  and PADF_RIGHT                ; See if down is pressed
+  and PADF_RIGHT                ; See if right is pressed
   call nz, moveright
 
   pop af
@@ -135,9 +142,7 @@ loop:
 
   pop af
 
-  ld a, [rSCX]
-  inc a
-  ld [rSCX], a
+  call updatebuildings
 
   jr loop
 
@@ -486,15 +491,53 @@ changefalldir:
   pop af
   ret
 
-setbuildings:
+initbuildings:                  ; Move the default building data into ram
   push af
   push bc
   push de
   push hl
 
-  ld hl, Buildings              ; Buildings addr in hl
+  ld a, _BUILDINGSSIZE
+  ld b, a
 
-  ld a, BuildingsEnd-Buildings
+  ld hl, Buildings
+  ld d, h
+  ld e, l
+
+  ld hl, _BUILDINGS
+
+.loop:
+  dec b
+
+  ld a, [de]
+  ld [hl], a
+  inc hl
+  inc de
+
+  ld a, b
+  cp 0
+  jr nz, .loop                  ; Keep looping if there's more data
+
+  pop hl
+  pop de
+  pop bc
+  pop af
+  ret
+
+drawbuildings:
+  push af
+  push bc
+  push de
+  push hl
+
+  ld a, 0
+  ld hl, _SCRN0
+  ld bc, SCRN_VX_B*SCRN_VY_B    ; width * height
+  call mem_SetVRAM              ; Clear background
+
+  ld hl, _BUILDINGS             ; Buildings addr in hl
+
+  ld a, _BUILDINGSSIZE
   ld b, a                       ; How many bytes left
 
 .loop:
@@ -591,6 +634,79 @@ drawbuilding:
   pop af
   ret
 
+updatebuildings:
+  push af
+  push bc
+  push hl
+
+  ld a, [rSCX]
+  inc a
+  ld [rSCX], a                  ; Scroll buildings
+
+  sub a, 8
+
+  sra a
+  sra a
+  sra a                         ; Translate a to tile position
+  and a, %00011111              ; Make sure nothing carried
+
+  ld c, a                       ; c is the position we're looking for
+
+  ld a, [_LASTSCROLL]
+  cp c
+  jr z, .popret                 ; If the last scroll position is the same as the current, don't check again
+
+  ld a, c
+  ld [_LASTSCROLL], a              ; Save the current scroll position
+
+  ld a, _NUMBUILDINGS
+  ld b, a                       ; b is our counter
+
+  ld hl, _BUILDINGS             ; hl is the current memory location
+
+.loop:
+  dec b
+
+  ld a, [hl]                    ; Get position
+  cp c
+  jr nz, .skip                  ; If not the same position, no big deal
+
+  call resetbuilding
+
+.skip:
+  inc hl
+  inc hl                        ; Next building
+
+  ld a, b
+  cp 0
+  jr nz, .loop                  ; Loop through buildings
+
+.popret:
+  pop hl
+  pop bc
+  pop af
+  ret
+
+; hl - building memory location (column)
+resetbuilding:
+  push af
+  push bc
+  push hl
+
+  inc hl                        ; Height
+
+  call randomnum
+  and a, %00001111
+  add a, 2
+  ld [hl], a
+
+  call drawbuildings
+
+  pop hl
+  pop bc
+  pop af
+  ret
+
 ; Try to find a building below the helo, if there is one put the dist to it in d. else put 255
 getbuildingbelowhelo:
   push af
@@ -608,8 +724,8 @@ getbuildingbelowhelo:
   sra a                         ; Divide x pos by 8 to get tile pos
   ld b, a
 
-  ld c, BuildingsEnd-Buildings  ; How many bytes to go through
-  ld hl, Buildings
+  ld c, _BUILDINGSSIZE          ; How many bytes to go through
+  ld hl, _BUILDINGS
 
 .buildingloop:
   ld a, [hl]                    ; Get column
@@ -703,12 +819,35 @@ StartLCD:
   ld [rLCDC], a
   ret
 
+; returns a pseudorandom number in a
+randomnum:
+  push bc
+
+  ld a, [_SEED]
+
+  ld b, a
+  rrca
+  rrca
+  rrca
+  xor $1F
+  add a, b
+  sbc a, 255
+
+  ld b, a
+
+  ld a, [rDIV]
+  xor b                         ; Some more randomness for good measure
+
+  ld [_SEED], a
+
+  pop bc
+  ret
+
 Sprites: {{ sprites("blank", "helo", "building", "building_top") }}
 SpritesEnd:
 
 Buildings:                      ; column, height
-  DB 2, 8
-  DB 4, 5
-  DB 9, 13
-  DB 15, 7
-BuildingsEnd:
+  DB 8, 8                       ; Initial building info
+  DB 16, 5
+  DB 24, 13
+  DB 32, 7
