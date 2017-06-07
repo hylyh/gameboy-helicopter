@@ -13,5 +13,17 @@ Requires [rgbds](https://github.com/rednex/rgbds) to build and I use [bgb](http:
 
 To build and run in bgb: run `make`. To just build: `make build`. Outputs rom as `helicopter.gb`
 
+## How do I learn?
+
+Resources I used!
+
+* the pan docs (literally the most invaluable tool for gb/gbc dev): http://bgb.bircd.org/pandocs.htm
+* official gameboy manual (goes without saying): http://www.chrisantonellis.com/files/gameboy/gb-programming-manual.pdf
+* opcodes: http://www.devrs.com/gb/files/GBCPU_Instr.html
+* this gameboy course, has a lot of example code, not everything works as-is though: http://cratel.wichita.edu/cratel/ECE238Spr08
+* honestly basically everything on this list: https://github.com/avivace/awesome-gbdev
+
+Also for my editor I use spacemacs (nasm-mode)
+
 ### nyoooom
 ![Helicopter gif](http://i.imgur.com/XtclIkb.gif)
