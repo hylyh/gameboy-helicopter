@@ -142,6 +142,11 @@ loop:
 
   pop af
 
+  ld b, a
+  ld a, [_SEED]
+  xor b
+  ld [_SEED], a                 ; Put input into the seed? sure
+
   call updatebuildings
 
   jr loop
