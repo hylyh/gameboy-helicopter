@@ -6,7 +6,7 @@ ASM=rgbasm -iincludes/
 LINK=rgblink
 FIX=rgbfix
 
-EMU=wine /Users/hayley/Documents/gbshit/bgb/bgb.exe
+EMU=wine ../tools/bgb/bgb.exe
 
 TARGET=helicopter
 
